@@ -3,7 +3,8 @@ import { jwtDecode } from 'jwt-decode'
 export interface DecodedToken {
   sub?: string
   email?: string
-  type?: number
+  user_id?: string // Backend uses 'user_id' for email
+  type?: string
   exp?: number
 }
 

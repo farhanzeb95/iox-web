@@ -1,27 +1,28 @@
+import type { UserType } from "../types/user_types"
+
+// Re-export UserType for convenience
+export type { UserType } from "../types/user_types"
+
 // API base URL - adjust this to match your backend server
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000/api/v1'
-
-// User type constants matching backend
-export const UserType = {
-  Admin: 1,
-  Seller: 2,
-  Buyer: 3
-} as const
-
-export type UserType = typeof UserType[keyof typeof UserType]
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'
 
 // User interface matching backend User model
 export interface User {
+  id?: string
   FirstName: string
   LastName: string
   Email: string
-  Password: string
+  Password?: string
   Type: UserType
   Contact: string
-  City: string
-  State: string
-  Zip: string
-  Country: string
+  /** Profile photo URL (e.g. from Supabase Storage users bucket) */
+  avatarUrl?: string
+  Address?: {
+    City: string
+    State: string
+    Zip: string
+    Country: string
+  }
 }
 
 // Signup form data interface (frontend form structure)
@@ -29,13 +30,15 @@ export interface SignupFormData {
   firstName: string
   lastName: string
   email: string
-  type: string | number
-  city: string
-  state: string
-  zip: string
-  country: string
+  type: string
   contact: string
   password: string
+  address: {
+    city: string
+    state: string
+    zip: string
+    country: string
+  }
 }
 
 export interface LoginFormData {
@@ -96,22 +99,19 @@ export async function loginUser(formData: LoginFormData): Promise<void> {
  */
 export async function createUser(formData: SignupFormData): Promise<ApiResponse<User>> {
   try {
-    // Map frontend form data to backend User model structure
-    const userType: UserType = (typeof formData.type === 'string' 
-      ? parseInt(formData.type, 10) 
-      : formData.type) as UserType
-    
     const userPayload: User = {
       FirstName: String(formData.firstName || ''),
       LastName: String(formData.lastName || ''),
       Email: String(formData.email || ''),
       Contact: String(formData.contact || ''),
       Password: String(formData.password || ''),
-      Type: userType,
-      City: String(formData.city || ''),
-      State: String(formData.state || ''),
-      Zip: String(formData.zip || ''),
-      Country: String(formData.country || '')
+      Type: (formData.type || '') as UserType,
+      Address: {
+        City: String(formData.address.city || ''),
+        State: String(formData.address.state || ''),
+        Zip: String(formData.address.zip || ''),
+        Country: String(formData.address.country || '')
+      }
     }
 
     const response = await fetch(`${API_BASE_URL}/users`, {
@@ -146,3 +146,56 @@ export async function createUser(formData: SignupFormData): Promise<ApiResponse<
   }
 }
 
+/**
+ * Fetches all users (admin). Requires auth token.
+ */
+export async function getUsers(): Promise<User[]> {
+  const token = localStorage.getItem('authToken')
+  if (!token) return []
+
+  const response = await fetch(`${API_BASE_URL}/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!response.ok) return []
+  const data = await response.json().catch(() => [])
+  return Array.isArray(data) ? data : []
+}
+
+const authHeaders = () => ({
+  Authorization: `Bearer ${localStorage.getItem('authToken') || ''}`,
+  'Content-Type': 'application/json',
+})
+
+/**
+ * Fetches current user profile (auth required).
+ */
+export async function getCurrentUser(): Promise<User | null> {
+  const token = localStorage.getItem('authToken')
+  if (!token) return null
+
+  const response = await fetch(`${API_BASE_URL}/users/me`, {
+    headers: authHeaders(),
+  })
+  if (!response.ok) return null
+  return response.json().catch(() => null)
+}
+
+/**
+ * Updates current user profile (auth required). Only FirstName, LastName, Contact, Address.
+ */
+export async function updateUser(
+  id: string,
+  data: Partial<Pick<User, 'FirstName' | 'LastName' | 'Contact' | 'Address'>>
+): Promise<ApiResponse<User>> {
+  const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: 'Update failed' }))
+    return { error: err.error || String(response.status) }
+  }
+  const user = await response.json()
+  return { data: user }
+}

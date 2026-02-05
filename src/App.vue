@@ -1,108 +1,66 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import Header from "./components/Header.vue";
-import Footer from "./components/Footer.vue";
-import Login from "./components/Login.vue";
-import Signup from "./components/Signup.vue";
-import Dashboard from "./components/Dashboard.vue";
+  import { ref, onMounted, provide } from 'vue'
+  import Header from './components/Header.vue'
+  import Footer from './components/Footer.vue'
+  import { decodeToken } from './utils/jwt'
+  
+  const isLoggedIn = ref(false)
+  const userType = ref()
+  const mainContentRef = ref<HTMLElement | null>(null)
+  provide('mainContentRef', mainContentRef)
 
-const currentView = ref<"login" | "signup" | "dashboard">("dashboard");
-const isLoggedIn = ref(false);
-
-const navigateToLogin = () => {
-  currentView.value = "login";
-};
-
-const navigateToSignup = () => {
-  currentView.value = "signup";
-};
-
-const navigateToDashboard = () => {
-  const token = localStorage.getItem("authToken");
-  currentView.value = "dashboard";
-  isLoggedIn.value = !!token;
-};
-
-const logout = () => {
-  localStorage.removeItem("authToken"); // remove stored token
-  isLoggedIn.value = false;
-  currentView.value = "login"; // navigate back to login
-};
-
-onMounted(() => {
-  const token = localStorage.getItem("authToken");
-  if (token) {
-    isLoggedIn.value = !!token;
-    currentView.value = "dashboard"; // user is logged in, show dashboard
+  const syncAuth = () => {
+    const token = localStorage.getItem('authToken')
+    isLoggedIn.value = !!localStorage.getItem('authToken')
+    userType.value = token ? decodeToken(token)?.type : undefined
   }
-});
-</script>
+  
+  onMounted(syncAuth)
+  
+  const handleLogout = () => {
+    localStorage.removeItem('authToken')
+    syncAuth()
+  }
+  </script>
+  
+  <template>
+    <Header :is-logged-in="isLoggedIn" :user-type="userType" @logout="handleLogout" />
+    <div class="page-wrapper">
+      <main ref="mainContentRef" class="main-content">
+        <router-view @loginSuccess="syncAuth" />
+      </main>
+      <Footer />
+    </div>
+  </template>
 
-<template>
-  <div class="app-wrapper">
-    <Header
-      :current-view="currentView"
-      :is-logged-in="isLoggedIn"
-      @navigate-to-login="navigateToLogin"
-      @navigate-to-signup="navigateToSignup"
-      @navigate-to-dashboard="navigateToDashboard"
-      @logout="logout"
-    />
+  <style>
+  /* Layout: header, content, footer in normal flow; whole page scrolls */
+  :root {
+    --app-header-height: 64px;
+    --app-footer-height: 64px;
+  }
 
-    <main class="main-content">
-      <Login
-        v-if="currentView === 'login'"
-        title="Login"
-        @navigateToSignup="navigateToSignup"
-        @loginSuccess="navigateToDashboard"
-      />
-      <Signup
-        v-else-if="currentView === 'signup'"
-        title="Signup"
-        @navigateToLogin="navigateToLogin"
-      />
-      <Dashboard v-else-if="currentView === 'dashboard'" />
-    </main>
+  * {
+    margin: 0;
+    box-sizing: border-box;
+  }
 
-    <Footer />
-  </div>
-</template>
+  html,
+  body {
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+  .page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 
-html,
-body {
-  height: 100%;
-  overflow-x: hidden;
-  overflow-y: hidden;
-}
-
-.app-wrapper {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: hidden;
-}
-
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  padding-top: 70px;
-  padding-bottom: 70px;
-  width: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
-  max-height: calc(100vh - 70px - 70px);
-}
-</style>
+  .main-content {
+    flex: 1;
+    width: 100%;
+  }
+  </style>
+  
