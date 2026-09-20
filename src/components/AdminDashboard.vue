@@ -3,7 +3,7 @@ import StatCard from './shared/StatCard.vue'
 import { ref, onMounted, computed } from 'vue'
 import { OnyxButton, OnyxLoadingIndicator, OnyxTable, OnyxHeadline } from 'sit-onyx'
 import { iconUserGroup, iconStore, iconCheck } from '@sit-onyx/icons'
-import { getUsers } from '../services/users_service'
+import { getUsers, updateSellerStatus } from '../services/users_service'
 import type { User } from '../services/users_service'
 import { getSellerStoreFees, reviewSellerStoreFee } from '../services/seller_store_fee_service'
 import type { SellerStoreFee } from '../types/seller_store_fee'
@@ -66,6 +66,20 @@ async function loadFees() {
   }
 }
 
+async function setSellerStatus(user: User, status: 'ACTIVE' | 'REJECTED') {
+  if (!user.id) return
+  const result = await updateSellerStatus(user.id, status)
+  if (result.error) {
+    feeError.value = result.error
+    return
+  }
+  const updatedUser = result.data
+  if (updatedUser) {
+    const index = users.value.findIndex((item) => item.id === updatedUser.id)
+    if (index >= 0) users.value[index] = updatedUser
+  }
+}
+
 async function reviewFee(fee: SellerStoreFee, status: 'PAID' | 'REJECTED') {
   const note = window.prompt(status === 'PAID' ? 'Optional approval note' : 'Reason for rejection')
   if (note === null) return
@@ -114,6 +128,8 @@ onMounted(() => {
             <th>Name</th>
             <th>Email</th>
             <th>Role</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </template>
         <template #default>
@@ -121,6 +137,15 @@ onMounted(() => {
             <td>{{ fullName(u) }}</td>
             <td>{{ u.Email || '–' }}</td>
             <td>{{ roleLabel(u.Type) }}</td>
+            <td>{{ u.status || '–' }}</td>
+            <td class="actions">
+              <template v-if="(u.Type === 'PRIVATE_SELLER' || u.Type === 'BUSINESS_SELLER') && u.status !== 'ACTIVE'">
+                <OnyxButton label="Approve seller" density="compact" @click="setSellerStatus(u, 'ACTIVE')" />
+              </template>
+              <template v-if="(u.Type === 'PRIVATE_SELLER' || u.Type === 'BUSINESS_SELLER') && u.status !== 'REJECTED'">
+                <OnyxButton label="Reject" density="compact" @click="setSellerStatus(u, 'REJECTED')" />
+              </template>
+            </td>
           </tr>
         </template>
       </OnyxTable>

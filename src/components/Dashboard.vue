@@ -8,6 +8,7 @@ import { decodeToken } from '../utils/jwt'
 import { UserTypes } from '../types/user_types'
 import { getCurrentUser } from '../services/users_service'
 import type { User } from '../services/users_service'
+import SellerStoreFeePanel from './shared/SellerStoreFeePanel.vue'
 
 const currentUser = ref<User | null>(null)
 const dashboardComponent = computed(() => {
@@ -31,7 +32,14 @@ const isSellerDashboard = computed(
     dashboardComponent.value === BusinessSellerDashboard ||
     dashboardComponent.value === PrivateSellerDashboard
 )
-const isInReview = computed(() => currentUser.value?.status === 'IN_REVIEW')
+const isSellerBlocked = computed(
+  () => isSellerDashboard.value && currentUser.value != null && currentUser.value.status !== 'ACTIVE'
+)
+const sellerStatusMessage = computed(() =>
+  currentUser.value?.status === 'REJECTED'
+    ? 'Your seller account was rejected. Please contact support for next steps.'
+    : 'Your seller account is under review. Product and order tools will be available after approval.'
+)
 
 async function loadUser() {
   if (!isSellerDashboard.value) return
@@ -44,10 +52,11 @@ watch(dashboardComponent, loadUser)
 
 <template>
   <div class="dashboard-layout">
-    <div v-if="isSellerDashboard && isInReview" class="in-review-banner">
-      Your seller account is under review. We will notify you once it is approved. You can still sign in and view this page.
+    <div v-if="isSellerBlocked" class="in-review-banner">
+      {{ sellerStatusMessage }}
     </div>
-    <component :is="dashboardComponent" />
+    <SellerStoreFeePanel v-if="isSellerBlocked" />
+    <component v-else :is="dashboardComponent" />
   </div>
 </template>
 

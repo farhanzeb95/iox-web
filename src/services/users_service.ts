@@ -191,6 +191,21 @@ export async function getUsers(): Promise<User[]> {
   }
 }
 
+export async function updateSellerStatus(
+  id: string,
+  status: 'ACTIVE' | 'REJECTED' | 'IN_REVIEW',
+): Promise<ApiResponse<User>> {
+  const response = await authFetch(`${API_BASE_URL}/users/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    return { error: (data as { error?: string }).error || 'Failed to update seller status' }
+  }
+  return { data: data as User }
+}
+
 /**
  * Fetches current user profile (auth required).
  */
