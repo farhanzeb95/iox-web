@@ -8,6 +8,8 @@ import type { User } from '../services/users_service'
 import { getSellerStoreFees, reviewSellerStoreFee } from '../services/seller_store_fee_service'
 import type { SellerStoreFee } from '../types/seller_store_fee'
 import { formatPricePKR } from '../utils/format'
+import { useToast } from '../composables/useToast'
+import AppDialog from './shared/AppDialog.vue'
 
 const users = ref<User[]>([])
 const loading = ref(true)
@@ -15,6 +17,10 @@ const fees = ref<SellerStoreFee[]>([])
 const feesLoading = ref(true)
 const feeError = ref<string | null>(null)
 const reviewingFeeId = ref<string | null>(null)
+const toast = useToast()
+const dialogOpen = ref(false)
+const dialogFee = ref<SellerStoreFee | null>(null)
+const dialogStatus = ref<'PAID' | 'REJECTED'>('PAID')
 
 const stats = computed(() => {
   const total = users.value.length
@@ -77,20 +83,31 @@ async function setSellerStatus(user: User, status: 'ACTIVE' | 'REJECTED') {
   if (updatedUser) {
     const index = users.value.findIndex((item) => item.id === updatedUser.id)
     if (index >= 0) users.value[index] = updatedUser
+    toast.success('Seller status updated', `Seller is now ${status.toLowerCase()}.`)
   }
 }
 
 async function reviewFee(fee: SellerStoreFee, status: 'PAID' | 'REJECTED') {
-  const note = window.prompt(status === 'PAID' ? 'Optional approval note' : 'Reason for rejection')
-  if (note === null) return
+  dialogFee.value = fee
+  dialogStatus.value = status
+  dialogOpen.value = true
+}
+
+async function submitFeeReview(note: string) {
+  if (!dialogFee.value) return
+  const fee = dialogFee.value
+  const status = dialogStatus.value
+  dialogOpen.value = false
   reviewingFeeId.value = fee.id
   feeError.value = null
   try {
     const updated = await reviewSellerStoreFee(fee.id, status, note)
     const index = fees.value.findIndex((item) => item.id === updated.id)
     if (index >= 0) fees.value[index] = updated
+    toast.success(status === 'PAID' ? 'Fee approved' : 'Fee rejected', 'The seller fee review has been saved.')
   } catch (e) {
     feeError.value = e instanceof Error ? e.message : 'Failed to review seller fee'
+    toast.error('Fee review failed', feeError.value)
   } finally {
     reviewingFeeId.value = null
   }
@@ -204,6 +221,17 @@ onMounted(() => {
       <p v-if="feeError" class="error">{{ feeError }}</p>
     </div>
   </div>
+  <AppDialog
+    :open="dialogOpen"
+    :title="dialogStatus === 'PAID' ? 'Approve store fee' : 'Reject store fee'"
+    :description="dialogStatus === 'PAID' ? 'Confirm that the payment reference has been verified.' : 'Add a reason so the seller knows what to correct.'"
+    input-label="Review note"
+    input-placeholder="Write a short note"
+    confirm-label="Save review"
+    :required="dialogStatus === 'REJECTED'"
+    @confirm="submitFeeReview"
+    @cancel="dialogOpen = false"
+  />
 </template>
 
 <style scoped>

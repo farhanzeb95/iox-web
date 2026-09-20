@@ -2,6 +2,7 @@
   import { ref, onMounted, provide } from 'vue'
   import Header from './components/Header.vue'
   import Footer from './components/Footer.vue'
+  import ToastHost from './components/shared/ToastHost.vue'
   import { decodeToken } from './utils/jwt'
   
   const isLoggedIn = ref(false)
@@ -25,6 +26,7 @@
   
   <template>
     <Header :is-logged-in="isLoggedIn" :user-type="userType" @logout="handleLogout" />
+    <ToastHost />
     <div class="page-wrapper">
       <main ref="mainContentRef" class="main-content">
         <router-view @loginSuccess="syncAuth" />

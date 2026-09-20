@@ -8,8 +8,10 @@
   import { PAYMENT_METHODS } from '../types/order'
   import { OnyxHeadline, OnyxButton, OnyxInput, OnyxLoadingIndicator } from 'sit-onyx'
   import { formatPricePKR } from '../utils/format'
+  import { useToast } from '../composables/useToast'
 
   const router = useRouter()
+  const toast = useToast()
   const cart = ref<CartDto | null>(null)
   const loading = ref(true)
   const placing = ref(false)
@@ -51,6 +53,7 @@
     const addr = address.value
     if (!addr.City?.trim()) {
       error.value = 'Please enter city'
+      toast.error('Shipping address required', 'Enter a city before placing the order.')
       return
     }
     placing.value = true
@@ -66,10 +69,12 @@
         paymentMethod.value
       )
       emitCartUpdated()
+      toast.success('Order placed', 'Your order has been submitted successfully.')
       const ids = orders.map((o) => o.id).join(',')
       await router.replace({ path: '/order-confirmation', query: { orders: ids } })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to place order'
+      toast.error('Order could not be placed', error.value)
     } finally {
       placing.value = false
     }

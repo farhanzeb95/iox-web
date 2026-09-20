@@ -1,6 +1,14 @@
-/* Minimal custom styles - Onyx handles theming */
+/* App visual foundation. Onyx supplies component tokens; these tokens unify custom surfaces. */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --app-ink: #17232d;
+  --app-text: #1d2b35;
+  --app-text-muted: #63737d;
+  --app-surface: #f4f7f5;
+  --app-surface-raised: #ffffff;
+  --app-border: #dbe4df;
+  --app-accent: #1e7556;
+  --app-accent-soft: #e1f0e9;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -11,7 +19,13 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: var(--app-text);
+  background: var(--app-surface);
+  background-image: linear-gradient(135deg, rgba(225, 240, 233, 0.78), transparent 42%), linear-gradient(315deg, rgba(231, 239, 245, 0.7), transparent 38%);
 }
+
+button, input, textarea, select { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgba(30, 117, 86, 0.35); outline-offset: 2px; }
 
 /* Theme toggle button only - Onyx handles all other buttons */
 .theme-toggle {

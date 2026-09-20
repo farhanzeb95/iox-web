@@ -8,6 +8,7 @@ import {
   type SellerStoreFee,
 } from '../../types/seller_store_fee'
 import { getMySellerStoreFee, submitSellerStoreFee } from '../../services/seller_store_fee_service'
+import { useToast } from '../../composables/useToast'
 
 const amount = ref(0)
 const fee = ref<SellerStoreFee | null>(null)
@@ -17,6 +18,7 @@ const loading = ref(true)
 const submitting = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
+const toast = useToast()
 
 const canSubmit = computed(() => fee.value?.status !== 'PAID' && !submitting.value)
 const statusLabel = computed(() => {
@@ -55,8 +57,10 @@ async function submitFee() {
   try {
     fee.value = await submitSellerStoreFee(paymentMethod.value, paymentReference.value.trim())
     success.value = 'Store fee submitted. An administrator will verify the payment.'
+    toast.success('Store fee submitted', 'An administrator will verify your payment reference.')
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to submit store fee'
+    toast.error('Store fee submission failed', error.value)
   } finally {
     submitting.value = false
   }

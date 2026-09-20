@@ -5,8 +5,10 @@
   import type { CartDto, CartItemDto } from '../types/cart'
   import { OnyxHeadline, OnyxButton, OnyxLoadingIndicator, OnyxSelect } from 'sit-onyx'
   import { formatPricePKR } from '../utils/format'
+  import { useToast } from '../composables/useToast'
 
   const router = useRouter()
+  const toast = useToast()
   const cart = ref<CartDto | null>(null)
   const loading = ref(true)
   const error = ref<string | null>(null)
@@ -46,6 +48,7 @@
       emitCartUpdated()
     } catch (e) {
       console.error('Update cart failed:', e)
+      toast.error('Cart update failed', e instanceof Error ? e.message : 'Please try again.')
     } finally {
       updatingId.value = null
     }
@@ -59,6 +62,7 @@
       emitCartUpdated()
     } catch (e) {
       console.error('Remove failed:', e)
+      toast.error('Could not remove item', e instanceof Error ? e.message : 'Please try again.')
     } finally {
       updatingId.value = null
     }

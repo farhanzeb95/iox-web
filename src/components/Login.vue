@@ -3,8 +3,10 @@ import { reactive, ref } from 'vue'
 import { loginUser } from '../services/users_service';
 import { useRouter } from 'vue-router';
 import { OnyxButton, OnyxInput, OnyxCard, OnyxHeadline, OnyxLink } from 'sit-onyx';
+import { useToast } from '../composables/useToast'
 
 const router = useRouter()
+const toast = useToast()
 
 const emit = defineEmits<{
   navigateToSignup: []
@@ -23,9 +25,7 @@ const loginForm = reactive<LoginForm>({
 const loginError = ref('')
 
 const handleForgotPassword = () => {
-  console.log('Forgot password clicked')
-  // TODO: Implement forgot password functionality
-  alert('Forgot password functionality coming soon!')
+  toast.info('Password recovery', 'Forgot password is not available yet. Please contact support.')
 }
 
 const handleSignupClick = () => {
@@ -36,6 +36,7 @@ const onLoginClick = async () => {
   try {
    loginError.value = ''
    await loginUser(loginForm)
+  toast.success('Welcome back', 'You are now signed in.')
    emit("loginSuccess")
     router.push('/dashboard')
   } catch(error) {
