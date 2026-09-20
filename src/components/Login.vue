@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { loginUser } from '../services/users_service';
 import { useRouter } from 'vue-router';
 import { OnyxButton, OnyxInput, OnyxCard, OnyxHeadline, OnyxLink } from 'sit-onyx';
@@ -20,6 +20,7 @@ const loginForm = reactive<LoginForm>({
   email: '',
   password: ''
 })
+const loginError = ref('')
 
 const handleForgotPassword = () => {
   console.log('Forgot password clicked')
@@ -33,11 +34,12 @@ const handleSignupClick = () => {
 
 const onLoginClick = async () => {
   try {
+   loginError.value = ''
    await loginUser(loginForm)
    emit("loginSuccess")
     router.push('/dashboard')
   } catch(error) {
-    console.log(error)
+    loginError.value = error instanceof Error ? error.message : 'Unable to login'
   }
 }
 </script>
@@ -62,6 +64,7 @@ const onLoginClick = async () => {
             placeholder="Enter your password"
             required
           />
+          <p v-if="loginError" class="error-message">{{ loginError }}</p>
           <div class="links">
             <OnyxLink href="#" @click.prevent="handleForgotPassword">Forgot Password?</OnyxLink>
             <OnyxLink href="#" @click.prevent="handleSignupClick">Not a member yet? Sign up</OnyxLink>
@@ -106,6 +109,12 @@ const onLoginClick = async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  font-size: 14px;
+}
+
+.error-message {
+  color: #d0392b;
+  margin: 0;
   font-size: 14px;
 }
 </style>

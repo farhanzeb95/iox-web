@@ -25,11 +25,6 @@
     }
   }
 
-  function isInWatchlist(product: Product): boolean {
-    const id = product.id || product._id
-    return id ? watchlistIds.value.includes(id) : false
-  }
-
   async function onToggleWatchlist(product: Product) {
     const id = product.id || product._id
     if (!id) return

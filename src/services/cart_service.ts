@@ -1,19 +1,11 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'
-
-const getAuthHeaders = (): HeadersInit => {
-  const headers: HeadersInit = { 'Content-Type': 'application/json' }
-  const token = localStorage.getItem('authToken')
-  if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-  return headers
-}
-
+import { API_BASE_URL } from '../config/api'
+import { authFetch } from '../utils/authFetch'
 import type { CartDto } from '../types/cart'
 
 /** Get current user's cart with product details (requires auth, buyer). */
 export async function getCart(): Promise<CartDto> {
-  const res = await fetch(`${API_BASE_URL}/cart`, { headers: getAuthHeaders() })
+  const res = await authFetch(`${API_BASE_URL}/cart`)
   if (!res.ok) {
-    if (res.status === 401) return { items: [] }
     const err = await res.json().catch(() => ({}))
     throw new Error((err as { error?: string }).error || `Failed to get cart: ${res.statusText}`)
   }
@@ -28,9 +20,8 @@ export async function getCart(): Promise<CartDto> {
 
 /** Add product to cart (requires auth, buyer). */
 export async function addToCart(productId: string, quantity: number = 1): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/cart`, {
+  const res = await authFetch(`${API_BASE_URL}/cart`, {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ productId, quantity }),
   })
   if (!res.ok) {
@@ -41,9 +32,8 @@ export async function addToCart(productId: string, quantity: number = 1): Promis
 
 /** Update cart item quantity; use 0 to remove (requires auth, buyer). */
 export async function updateCartQuantity(productId: string, quantity: number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/cart`, {
+  const res = await authFetch(`${API_BASE_URL}/cart`, {
     method: 'PATCH',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ productId, quantity }),
   })
   if (!res.ok) {
@@ -54,9 +44,8 @@ export async function updateCartQuantity(productId: string, quantity: number): P
 
 /** Remove item from cart (requires auth, buyer). */
 export async function removeFromCart(productId: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/cart/${productId}`, {
+  const res = await authFetch(`${API_BASE_URL}/cart/${productId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -66,9 +55,8 @@ export async function removeFromCart(productId: string): Promise<void> {
 
 /** Clear entire cart (requires auth, buyer). */
 export async function clearCart(): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/cart`, {
+  const res = await authFetch(`${API_BASE_URL}/cart`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

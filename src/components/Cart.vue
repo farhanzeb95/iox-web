@@ -103,7 +103,7 @@
                   list-label="Quantity"
                   :options="quantityOptions(item)"
                   :disabled="updatingId === item.productId"
-                  @update:model-value="(v: number | string) => onQuantityChange(item, Number(v))"
+                  @update:model-value="(v?: number | null) => onQuantityChange(item, Number(v ?? item.quantity))"
                 />
                 <OnyxButton
                   label="Remove"

@@ -38,8 +38,8 @@
     { value: 'used', label: 'Used' },
     { value: 'refurbished', label: 'Refurbished' },
   ]
-  const minPrice = ref<number | null>(null)
-  const maxPrice = ref<number | null>(null)
+  const minPrice = ref('')
+  const maxPrice = ref('')
   const sortBy = ref('created_at:desc')
 
   const loadProducts = async () => {
@@ -50,8 +50,10 @@
       if (searchQuery.value.trim()) filters.search = searchQuery.value.trim()
       if (categoryFilter.value) filters.category = categoryFilter.value
       if (conditionFilter.value) filters.condition = conditionFilter.value
-      if (minPrice.value !== null && minPrice.value > 0) filters.minPrice = minPrice.value
-      if (maxPrice.value !== null && maxPrice.value > 0) filters.maxPrice = maxPrice.value
+      const min = Number(minPrice.value)
+      const max = Number(maxPrice.value)
+      if (minPrice.value !== '' && min > 0) filters.minPrice = min
+      if (maxPrice.value !== '' && max > 0) filters.maxPrice = max
       if (sortBy.value) filters.sortBy = sortBy.value
 
       const response = await getProducts(filters)
@@ -142,8 +144,8 @@
         </div>
         <div class="filter-field">
           <OnyxInput
-            v-model.number="minPrice"
-            type="number"
+            v-model="minPrice"
+            inputmode="decimal"
             label="Min Price"
             placeholder="0.00"
             step="0.01"
@@ -152,8 +154,8 @@
         </div>
         <div class="filter-field">
           <OnyxInput
-            v-model.number="maxPrice"
-            type="number"
+            v-model="maxPrice"
+            inputmode="decimal"
             label="Max Price"
             placeholder="0.00"
             step="0.01"

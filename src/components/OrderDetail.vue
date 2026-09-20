@@ -6,7 +6,8 @@
   import type { OrderDto, ShippingAddress } from '../types/order'
   import { decodeToken } from '../utils/jwt'
   import { UserTypes } from '../types/user_types'
-  import { OnyxHeadline, OnyxButton, OnyxLoadingIndicator, OnyxInput } from 'sit-onyx'
+  import { OnyxHeadline, OnyxButton, OnyxIconButton, OnyxLoadingIndicator, OnyxInput } from 'sit-onyx'
+  import { iconArrowLeft } from '@sit-onyx/icons'
   import { formatPricePKR } from '../utils/format'
 
   const route = useRoute()
@@ -31,8 +32,18 @@
 
   const canCancel = computed(() => isBuyer.value && order.value?.status === 'PENDING')
   const canConfirm = computed(() => isSeller.value && order.value?.status === 'PENDING')
-  const canMarkShipped = computed(() => isSeller.value && order.value?.status === 'CONFIRMED')
+  /** When CONFIRMED, seller sees tracking form and submits to move to SHIPPED (no separate "Mark Shipped" button). */
+  const showTrackingFormForShipped = computed(
+    () => isSeller.value && order.value?.status === 'CONFIRMED'
+  )
   const canMarkDelivered = computed(() => isSeller.value && order.value?.status === 'SHIPPED')
+
+  const trackingNumberInput = ref('')
+  const carrierInput = ref('')
+  const trackingFormError = ref('')
+  const hasTrackingInfo = computed(
+    () => !!(order.value?.trackingNumber?.trim() || order.value?.carrier?.trim())
+  )
 
   const returnRequested = ref(false)
   const returnReason = ref('')
@@ -85,12 +96,18 @@
     }
   }
 
-  async function setStatus(newStatus: string) {
+  async function setStatus(
+    newStatus: string,
+    options?: { trackingNumber?: string; carrier?: string }
+  ) {
     if (!orderId.value) return
     statusActionLoading.value = true
     statusError.value = null
+    trackingFormError.value = ''
     try {
-      order.value = await updateOrderStatus(orderId.value, newStatus)
+      order.value = await updateOrderStatus(orderId.value, newStatus, options)
+      trackingNumberInput.value = ''
+      carrierInput.value = ''
     } catch (e) {
       statusError.value = e instanceof Error ? e.message : 'Failed to update status'
     } finally {
@@ -98,14 +115,42 @@
     }
   }
 
+  function markAsShipped() {
+    trackingFormError.value = ''
+    const tracking = trackingNumberInput.value.trim()
+    const carrier = carrierInput.value.trim()
+    if (!tracking) {
+      trackingFormError.value = 'Please enter a tracking number so the buyer can track the order.'
+      return
+    }
+    setStatus('SHIPPED', { trackingNumber: tracking, carrier })
+  }
+
   onMounted(loadOrder)
   watch(orderId, loadOrder)
+  watch(
+    () => order.value?.status,
+    (status) => {
+      if (status === 'CONFIRMED' && order.value) {
+        trackingNumberInput.value = order.value.trackingNumber ?? ''
+        carrierInput.value = order.value.carrier ?? ''
+      }
+    },
+    { immediate: true }
+  )
 
   const goBack = () => router.push('/dashboard')
 </script>
 
 <template>
   <div class="order-detail-page">
+    <OnyxIconButton
+      :icon="iconArrowLeft"
+      label="Back to dashboard"
+      class="back-btn back-btn--top"
+      aria-label="Back to dashboard"
+      @click="goBack"
+    />
     <OnyxHeadline is="h1" class="page-title">Order details</OnyxHeadline>
     <p v-if="loading" class="loading"><OnyxLoadingIndicator /> Loading…</p>
     <p v-else-if="error" class="error">{{ error }}</p>
@@ -137,6 +182,21 @@
         <h2 class="section-title">Payment</h2>
         <p class="payment-method">{{ order.paymentMethod }}</p>
 
+        <div v-if="hasTrackingInfo" class="tracking-section tracking-card">
+          <h2 class="section-title">Shipment tracking</h2>
+          <p class="tracking-hint">Use these details to track your order on the courier’s website.</p>
+          <div class="tracking-details">
+            <p v-if="order.trackingNumber" class="tracking-line">
+              <strong>Tracking number:</strong>
+              <span class="tracking-value">{{ order.trackingNumber }}</span>
+            </p>
+            <p v-if="order.carrier" class="tracking-line">
+              <strong>Tracking company:</strong>
+              <span class="tracking-value">{{ order.carrier }}</span>
+            </p>
+          </div>
+        </div>
+
         <div v-if="canRequestReturn" class="actions return-section">
           <h2 class="section-title">Request return</h2>
           <p v-if="returnError" class="status-error">{{ returnError }}</p>
@@ -145,7 +205,17 @@
         </div>
         <p v-else-if="returnRequested" class="return-requested">Return requested for this order.</p>
 
-        <div v-if="canCancel || canConfirm || canMarkShipped || canMarkDelivered" class="actions">
+        <div v-if="showTrackingFormForShipped" class="tracking-form actions">
+          <h2 class="section-title">Add tracking & mark as shipped</h2>
+          <p class="form-hint">Enter tracking details so the buyer can track the order. Once you submit, the order status will change to Shipped.</p>
+          <p v-if="trackingFormError" class="status-error">{{ trackingFormError }}</p>
+          <OnyxInput v-model="trackingNumberInput" label="Tracking number" placeholder="e.g. 1234567890" class="tracking-field" />
+          <OnyxInput v-model="carrierInput" label="Carrier" placeholder="e.g. TCS, Leopards, Pakistan Post" class="tracking-field" />
+          <div class="action-buttons">
+            <OnyxButton label="Mark as shipped" density="compact" :disabled="statusActionLoading" @click="markAsShipped" />
+          </div>
+        </div>
+        <div v-else-if="canCancel || canConfirm || canMarkDelivered" class="actions">
           <p v-if="statusError" class="status-error">{{ statusError }}</p>
           <div class="action-buttons">
             <OnyxButton
@@ -163,13 +233,6 @@
               :disabled="statusActionLoading"
             />
             <OnyxButton
-              v-if="canMarkShipped"
-              label="Mark Shipped"
-              density="compact"
-              @click="setStatus('SHIPPED')"
-              :disabled="statusActionLoading"
-            />
-            <OnyxButton
               v-if="canMarkDelivered"
               label="Mark Delivered"
               density="compact"
@@ -179,7 +242,6 @@
           </div>
         </div>
       </div>
-      <OnyxButton label="Back to dashboard" class="back-btn" @click="goBack" />
     </template>
   </div>
 </template>
@@ -312,6 +374,51 @@
     font-weight: 600;
   }
 
+  .tracking-section {
+    margin-top: 16px;
+  }
+
+  .tracking-card {
+    padding: 16px;
+    border: 1px solid var(--onyx-color-base-border-subtle);
+    border-radius: 8px;
+    background: var(--onyx-color-base-background-elevated);
+  }
+
+  .tracking-hint {
+    font-size: 0.875rem;
+    color: var(--onyx-color-base-text-secondary);
+    margin: 0 0 12px;
+  }
+
+  .tracking-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tracking-line {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+
+  .tracking-value {
+    display: block;
+    margin-top: 2px;
+    font-weight: 500;
+    word-break: break-all;
+  }
+
+  .tracking-form .form-hint {
+    font-size: 0.875rem;
+    color: var(--onyx-color-base-text-secondary);
+    margin: 0 0 12px;
+  }
+
+  .tracking-form .tracking-field {
+    margin-bottom: 12px;
+  }
+
   .shipping-address,
   .payment-method {
     margin: 0;
@@ -347,7 +454,7 @@
     color: var(--onyx-color-base-text-secondary);
   }
 
-  .back-btn {
-    margin-top: 8px;
+  .back-btn--top {
+    margin-bottom: 16px;
   }
 </style>

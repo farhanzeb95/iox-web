@@ -96,7 +96,7 @@
           >
             <td>#{{ order.id.slice(-8) }}</td>
             <td>{{ orderSummary(order) }}</td>
-            <td>{{ order.status }}</td>
+            <td><span class="order-status-badge">{{ order.status }}</span></td>
           </tr>
         </template>
       </OnyxTable>
@@ -147,5 +147,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.order-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--onyx-color-base-background-hover);
+  color: var(--onyx-color-base-text-intense);
 }
 </style>

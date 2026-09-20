@@ -8,7 +8,10 @@ import { iconCash, iconClipboard, iconTimer, iconList } from '@sit-onyx/icons'
 import type { Product } from '../types/product'
 import type { OrderDto } from '../types/order'
 import { formatPricePKR } from '../utils/format'
+import { API_BASE_URL } from '../config/api'
 import { getMyOrders } from '../services/order_service'
+import { authFetch } from '../utils/authFetch'
+import SellerStoreFeePanel from './shared/SellerStoreFeePanel.vue'
 
 const router = useRouter()
 const sellerOrders = ref<OrderDto[]>([])
@@ -50,22 +53,10 @@ const products = ref<Product[]>([])
 const loading = ref(true)
 
 const loadProducts = async () => {
-  const token = localStorage.getItem('authToken')
-  if (!token) {
-    loading.value = false
-    return
-  }
-
   try {
     loading.value = true
-    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'}/products/my-products`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    if (!res.ok) {
-      throw new Error('Failed to fetch products')
-    }
+    const res = await authFetch(`${API_BASE_URL}/products/my-products`)
+    if (!res.ok) throw new Error('Failed to fetch products')
     const sellerProducts = await res.json()
     products.value = sellerProducts
     const orders = await getMyOrders().catch(() => [] as OrderDto[])
@@ -120,6 +111,7 @@ function goToOrder(order: OrderDto) {
 
 <template>
   <div class="dashboard">
+    <SellerStoreFeePanel />
     <div class="stats">
       <StatCard v-for="s in stats" :key="s.title" :title="s.title" :value="s.value" :icon="s.icon" />
     </div>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { createUser } from '../services/users_service'
-import { userTypes } from '../types/user_types'
+import { createUser, uploadSignupDocument } from '../services/users_service'
+import { userTypes, UserTypes } from '../types/user_types'
 import {
   OnyxButton,
   OnyxInput,
@@ -22,12 +22,10 @@ type SignupForm = {
   type: string
   contact: string
   password: string
-  address: {
-    city: string
-    state: string
-    zip: string
-    country: string
-  }
+  address: { city: string; state: string; zip: string; country: string }
+  businessRegistrationUrl?: string
+  idCardFrontUrl?: string
+  idCardBackUrl?: string
 }
 
 const form = reactive<SignupForm>({
@@ -37,16 +35,17 @@ const form = reactive<SignupForm>({
   type: '',
   contact: '',
   password: '',
-  address: {
-    city: '',
-    state: '',
-    zip: '',
-    country: '',
-  },
+  address: { city: '', state: '', zip: '', country: '' },
 })
 
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+const idCardFrontFile = ref<File | null>(null)
+const idCardBackFile = ref<File | null>(null)
+const businessRegFile = ref<File | null>(null)
+
+const isPrivateSeller = computed(() => form.type === UserTypes.PrivateSeller)
+const isBusinessSeller = computed(() => form.type === UserTypes.BusinessSeller)
 
 const userTypeOptions = [
   { value: '', label: 'Select user type' },
@@ -55,6 +54,22 @@ const userTypeOptions = [
 
 function goToLogin() {
   router.push('/login')
+}
+
+function onIdCardFrontChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  idCardFrontFile.value = target.files?.[0] ?? null
+  form.idCardFrontUrl = undefined
+}
+function onIdCardBackChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  idCardBackFile.value = target.files?.[0] ?? null
+  form.idCardBackUrl = undefined
+}
+function onBusinessRegChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  businessRegFile.value = target.files?.[0] ?? null
+  form.businessRegistrationUrl = undefined
 }
 
 async function onSignupClick() {
@@ -70,11 +85,31 @@ async function onSignupClick() {
     error.value = 'First name and last name are required'
     return
   }
+  if (isPrivateSeller.value) {
+    if (!idCardFrontFile.value || !idCardBackFile.value) {
+      error.value = 'Please upload both ID card (front and back) images'
+      return
+    }
+  }
+  if (isBusinessSeller.value) {
+    if (!businessRegFile.value) {
+      error.value = 'Please upload your business registration document'
+      return
+    }
+  }
 
   error.value = null
   isLoading.value = true
 
   try {
+    if (isPrivateSeller.value && idCardFrontFile.value && idCardBackFile.value) {
+      form.idCardFrontUrl = await uploadSignupDocument(idCardFrontFile.value)
+      form.idCardBackUrl = await uploadSignupDocument(idCardBackFile.value)
+    }
+    if (isBusinessSeller.value && businessRegFile.value) {
+      form.businessRegistrationUrl = await uploadSignupDocument(businessRegFile.value)
+    }
+
     const result = await createUser(form)
 
     if (result.error) {
@@ -84,12 +119,15 @@ async function onSignupClick() {
       form.lastName = ''
       form.email = ''
       form.type = ''
-      form.address.city = ''
-      form.address.state = ''
-      form.address.zip = ''
-      form.address.country = ''
+      form.address = { city: '', state: '', zip: '', country: '' }
       form.contact = ''
       form.password = ''
+      form.businessRegistrationUrl = undefined
+      form.idCardFrontUrl = undefined
+      form.idCardBackUrl = undefined
+      idCardFrontFile.value = null
+      idCardBackFile.value = null
+      businessRegFile.value = null
       router.push('/login')
     }
   } catch (e) {
@@ -138,6 +176,28 @@ async function onSignupClick() {
             list-label="User type"
             :options="userTypeOptions"
           />
+
+          <div v-if="isPrivateSeller" class="doc-uploads">
+            <p class="doc-hint">Your account will be set to &quot;In review&quot; until we verify your ID.</p>
+            <div class="file-field">
+              <label class="file-label">ID card (front) <span class="required">*</span></label>
+              <input type="file" accept=".jpg,.jpeg,.png,.webp" @change="onIdCardFrontChange" class="file-input" />
+              <span v-if="idCardFrontFile" class="file-name">{{ idCardFrontFile.name }}</span>
+            </div>
+            <div class="file-field">
+              <label class="file-label">ID card (back) <span class="required">*</span></label>
+              <input type="file" accept=".jpg,.jpeg,.png,.webp" @change="onIdCardBackChange" class="file-input" />
+              <span v-if="idCardBackFile" class="file-name">{{ idCardBackFile.name }}</span>
+            </div>
+          </div>
+          <div v-else-if="isBusinessSeller" class="doc-uploads">
+            <p class="doc-hint">Your account will be set to &quot;In review&quot; until we verify your business.</p>
+            <div class="file-field">
+              <label class="file-label">Business registration document <span class="required">*</span></label>
+              <input type="file" accept=".jpg,.jpeg,.png,.webp" @change="onBusinessRegChange" class="file-input" />
+              <span v-if="businessRegFile" class="file-name">{{ businessRegFile.name }}</span>
+            </div>
+          </div>
 
           <div class="row">
             <OnyxInput
@@ -231,6 +291,47 @@ async function onSignupClick() {
   margin: 0;
   color: var(--onyx-color-text-danger-intense);
   font-size: 14px;
+}
+
+.doc-uploads {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.doc-hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--onyx-color-base-text-secondary);
+}
+
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.file-label .required {
+  color: var(--onyx-color-text-danger-intense);
+}
+
+.file-input {
+  font-size: 0.875rem;
+  padding: 8px;
+  border: 1px solid var(--onyx-color-base-border-subtle);
+  border-radius: 6px;
+  background: var(--onyx-color-base-background);
+}
+
+.file-name {
+  font-size: 0.8125rem;
+  color: var(--onyx-color-base-text-secondary);
 }
 
 .links {

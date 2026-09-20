@@ -10,6 +10,7 @@ export const PAYMENT_METHODS = [
   { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
   { value: 'JAZZCASH', label: 'JazzCash' },
   { value: 'EASYPAISA', label: 'EasyPaisa' },
+  { value: 'RAAST', label: 'Raast' },
   { value: 'CARD', label: 'Credit/Debit Card' },
 ] as const
 
@@ -32,5 +33,7 @@ export type OrderDto = {
   paymentMethod: string
   paymentStatus: string
   shippingAddress: ShippingAddress
+  trackingNumber?: string
+  carrier?: string
   createdAt: string
 }

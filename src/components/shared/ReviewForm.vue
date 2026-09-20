@@ -50,6 +50,7 @@
       <label class="review-form__label">Comment (optional)</label>
       <OnyxTextarea
         v-model="comment"
+        label="Comment"
         placeholder="Write your review..."
         :rows="4"
         class="review-form__textarea"

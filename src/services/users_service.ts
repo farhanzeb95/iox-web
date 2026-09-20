@@ -1,10 +1,9 @@
 import type { UserType } from "../types/user_types"
+import { API_BASE_URL } from '../config/api'
+import { authFetch } from '../utils/authFetch'
 
 // Re-export UserType for convenience
 export type { UserType } from "../types/user_types"
-
-// API base URL - adjust this to match your backend server
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'
 
 // User interface matching backend User model
 export interface User {
@@ -15,6 +14,11 @@ export interface User {
   Password?: string
   Type: UserType
   Contact: string
+  /** ACTIVE, IN_REVIEW, REJECTED - seller account status */
+  status?: string
+  businessRegistrationUrl?: string
+  idCardFrontUrl?: string
+  idCardBackUrl?: string
   /** Profile photo URL (e.g. from Supabase Storage users bucket) */
   avatarUrl?: string
   Address?: {
@@ -39,6 +43,11 @@ export interface SignupFormData {
     zip: string
     country: string
   }
+  /** Set after uploading document; required for BUSINESS_SELLER */
+  businessRegistrationUrl?: string
+  /** Set after uploading; required for PRIVATE_SELLER */
+  idCardFrontUrl?: string
+  idCardBackUrl?: string
 }
 
 export interface LoginFormData {
@@ -52,49 +61,62 @@ export interface ApiResponse<T> {
   error?: string
 }
 
-export async function loginUser(formData: LoginFormData): Promise<void> {
-  try {
-    const loginPayload = {
-      Email: formData.email,
-      Password: formData.password
-    }
-
-    const response = await fetch(`${API_BASE_URL}/users/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(loginPayload)
-    })
-
-    // Parse JSON safely
-    const data = await response.json().catch(() => ({}))
-
-    if (!response.ok) {
-      console.error('Login failed:', data)
-      return
-    }
-
-    // Assuming the API returns { token: '...' } or just a string
-    const token = typeof data === 'string' ? data : data.token
-
-    if (token) {
-      // Store token in localStorage
-      localStorage.setItem('authToken', token)
-      console.log('Login successful, token saved:', token)
-    } else {
-      console.warn('Login successful but no token returned:', data)
-    }
-
-  } catch (error) {
-    console.error('Login error:', error)
+export async function loginUser(formData: LoginFormData): Promise<string> {
+  const loginPayload = {
+    Email: formData.email,
+    Password: formData.password
   }
+
+  const response = await fetch(`${API_BASE_URL}/users/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(loginPayload)
+  })
+
+  // Parse JSON safely
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const errorMessage = typeof data === 'object' && data !== null && 'error' in data
+      ? String((data as { error?: string }).error || 'Login failed')
+      : 'Login failed'
+    throw new Error(errorMessage)
+  }
+
+  // Assuming the API returns { token: '...' } or just a string
+  const token = typeof data === 'string' ? data : (data as { token?: string }).token
+  if (!token) {
+    throw new Error('Login succeeded but no token was returned')
+  }
+
+  localStorage.setItem('authToken', token)
+  return token
 }
 
 
 /**
+ * Upload a signup document (identity/business doc). Returns the public URL.
+ */
+export async function uploadSignupDocument(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('document', file)
+  const res = await fetch(`${API_BASE_URL}/users/upload-signup-document`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error || 'Upload failed')
+  }
+  const data = await res.json()
+  return (data as { url: string }).url
+}
+
+/**
  * Creates a new user by calling the POST /users endpoint
- * @param formData - The signup form data
+ * @param formData - The signup form data (include businessRegistrationUrl / idCardFrontUrl / idCardBackUrl for sellers)
  * @returns Promise with the created user or error
  */
 export async function createUser(formData: SignupFormData): Promise<ApiResponse<User>> {
@@ -112,6 +134,15 @@ export async function createUser(formData: SignupFormData): Promise<ApiResponse<
         Zip: String(formData.address.zip || ''),
         Country: String(formData.address.country || '')
       }
+    }
+    if (formData.businessRegistrationUrl) {
+      userPayload.businessRegistrationUrl = formData.businessRegistrationUrl
+    }
+    if (formData.idCardFrontUrl) {
+      userPayload.idCardFrontUrl = formData.idCardFrontUrl
+    }
+    if (formData.idCardBackUrl) {
+      userPayload.idCardBackUrl = formData.idCardBackUrl
     }
 
     const response = await fetch(`${API_BASE_URL}/users`, {
@@ -150,34 +181,27 @@ export async function createUser(formData: SignupFormData): Promise<ApiResponse<
  * Fetches all users (admin). Requires auth token.
  */
 export async function getUsers(): Promise<User[]> {
-  const token = localStorage.getItem('authToken')
-  if (!token) return []
-
-  const response = await fetch(`${API_BASE_URL}/users`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!response.ok) return []
-  const data = await response.json().catch(() => [])
-  return Array.isArray(data) ? data : []
+  try {
+    const response = await authFetch(`${API_BASE_URL}/users`)
+    if (!response.ok) return []
+    const data = await response.json().catch(() => [])
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
 }
-
-const authHeaders = () => ({
-  Authorization: `Bearer ${localStorage.getItem('authToken') || ''}`,
-  'Content-Type': 'application/json',
-})
 
 /**
  * Fetches current user profile (auth required).
  */
 export async function getCurrentUser(): Promise<User | null> {
-  const token = localStorage.getItem('authToken')
-  if (!token) return null
-
-  const response = await fetch(`${API_BASE_URL}/users/me`, {
-    headers: authHeaders(),
-  })
-  if (!response.ok) return null
-  return response.json().catch(() => null)
+  try {
+    const response = await authFetch(`${API_BASE_URL}/users/me`)
+    if (!response.ok) return null
+    return response.json().catch(() => null)
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -187,9 +211,8 @@ export async function updateUser(
   id: string,
   data: Partial<Pick<User, 'FirstName' | 'LastName' | 'Contact' | 'Address'>>
 ): Promise<ApiResponse<User>> {
-  const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+  const response = await authFetch(`${API_BASE_URL}/users/${id}`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!response.ok) {

@@ -18,6 +18,8 @@ import ReturnsPolicy from '../components/ReturnsPolicy.vue'
 import PaymentMethods from '../components/PaymentMethods.vue'
 import SellerInfo from '../components/SellerInfo.vue'
 import SellerStore from '../components/SellerStore.vue'
+import { decodeToken } from '../utils/jwt'
+import { UserTypes } from '../types/user_types'
 
 const routes = [
   { path: '/', component: Homepage },
@@ -34,7 +36,7 @@ const routes = [
   { path: '/dashboard', component: Dashboard },
   { path: '/help', component: Help },
   { path: '/shipping', component: ShippingInfo },
-  { path: '/returns', component: ReturnsPolicy },
+  { path: '/returns-policy', component: ReturnsPolicy },
   { path: '/payment-methods', component: PaymentMethods },
   { path: '/seller-info', component: SellerInfo },
   { path: '/seller/:sellerId', name: 'seller-store', component: SellerStore },
@@ -47,15 +49,36 @@ export const router = createRouter({
 })
 
 const authRequiredPaths = ['/dashboard', '/profile', '/watchlist', '/cart', '/checkout', '/order-confirmation', '/orders', '/returns']
+const buyerOnlyPaths = ['/watchlist', '/cart', '/checkout', '/order-confirmation']
+const sellerAdminPaths = ['/dashboard', '/returns']
 
 router.beforeEach((to, _, next) => {
   const token = localStorage.getItem('authToken')
+  const decoded = token ? decodeToken(token) : null
+  const userType = decoded?.type
+
   if (authRequiredPaths.some((p) => to.path === p || to.path.startsWith(p + '/'))) {
-    if (!token) {
+    if (!token || !userType) {
       next('/login')
       return
     }
   }
+
+  if (buyerOnlyPaths.some((p) => to.path === p || to.path.startsWith(p + '/'))) {
+    if (userType !== UserTypes.Buyer) {
+      next('/products-view')
+      return
+    }
+  }
+
+  if (sellerAdminPaths.some((p) => to.path === p || to.path.startsWith(p + '/'))) {
+    const allowed = userType === UserTypes.PrivateSeller || userType === UserTypes.BusinessSeller || userType === UserTypes.Admin
+    if (!allowed) {
+      next('/products-view')
+      return
+    }
+  }
+
   next()
 })
 

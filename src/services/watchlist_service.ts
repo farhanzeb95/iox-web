@@ -1,24 +1,15 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'
-
-const getAuthHeaders = (): HeadersInit => {
-  const headers: HeadersInit = { 'Content-Type': 'application/json' }
-  const token = localStorage.getItem('authToken')
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  return headers
-}
+import { API_BASE_URL } from '../config/api'
+import { authFetch } from '../utils/authFetch'
 
 export interface WatchlistResponse {
   productIds: string[]
 }
 
-/** Get current user's watchlist product IDs (requires auth). Returns [] if not logged in or on error. */
+/** Get current user's watchlist product IDs (requires auth). Returns [] on error. */
 export async function getWatchlist(): Promise<string[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/watchlist`, { headers: getAuthHeaders() })
-    if (!res.ok) {
-      if (res.status === 401) return []
-      throw new Error(`Failed to fetch watchlist: ${res.statusText}`)
-    }
+    const res = await authFetch(`${API_BASE_URL}/watchlist`)
+    if (!res.ok) throw new Error(`Failed to fetch watchlist: ${res.statusText}`)
     const data: WatchlistResponse = await res.json()
     return data.productIds ?? []
   } catch (error) {
@@ -29,9 +20,8 @@ export async function getWatchlist(): Promise<string[]> {
 
 /** Add product to watchlist (requires auth). */
 export async function addToWatchlist(productId: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/watchlist`, {
+  const res = await authFetch(`${API_BASE_URL}/watchlist`, {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ productId }),
   })
   if (!res.ok) {
@@ -42,9 +32,8 @@ export async function addToWatchlist(productId: string): Promise<void> {
 
 /** Remove product from watchlist (requires auth). */
 export async function removeFromWatchlist(productId: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/watchlist/${productId}`, {
+  const res = await authFetch(`${API_BASE_URL}/watchlist/${productId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
   })
   if (!res.ok) {
     const err = await res.json()

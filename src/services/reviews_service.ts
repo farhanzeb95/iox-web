@@ -1,13 +1,6 @@
+import { API_BASE_URL } from '../config/api'
+import { authFetch } from '../utils/authFetch'
 import type { Review, ReviewsResponse } from '../types/review'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'
-
-const getAuthHeaders = (): HeadersInit => {
-  const headers: HeadersInit = { 'Content-Type': 'application/json' }
-  const token = localStorage.getItem('authToken')
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  return headers
-}
 
 export async function getProductReviews(productId: string): Promise<Review[]> {
   try {
@@ -26,9 +19,7 @@ export async function getProductReviews(productId: string): Promise<Review[]> {
 
 /** Returns whether the current buyer can review this product (has a delivered order containing it). Auth required, buyer only. */
 export async function getCanReviewProduct(productId: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE_URL}/products/${productId}/can-review`, {
-    headers: getAuthHeaders(),
-  })
+  const res = await authFetch(`${API_BASE_URL}/products/${productId}/can-review`)
   if (!res.ok) return false
   const data = await res.json()
   return data.canReview === true
@@ -43,9 +34,8 @@ export async function createReview(
   productId: string,
   input: CreateReviewInput
 ): Promise<Review> {
-  const res = await fetch(`${API_BASE_URL}/products/${productId}/reviews`, {
+  const res = await authFetch(`${API_BASE_URL}/products/${productId}/reviews`, {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify({
       rating: input.rating,
       comment: input.comment || '',

@@ -1,40 +1,12 @@
 import type { Product } from "../types/product"
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'
+import { API_BASE_URL } from '../config/api'
+import { authFetch, authFetchForUpload } from '../utils/authFetch'
 
 interface ProductsResponse {
   products: Product[]
   total: number
   page: number
   limit: number
-}
-
-// Get auth token from localStorage
-const getAuthToken = (): string | null => {
-  return localStorage.getItem('authToken')
-}
-
-// Get headers with auth token
-const getAuthHeaders = (): HeadersInit => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  }
-  const token = getAuthToken()
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return headers
-}
-
-// Get headers for file uploads (no Content-Type - browser sets it with boundary)
-const getAuthHeadersForUpload = (): HeadersInit => {
-  const headers: HeadersInit = {}
-  const token = getAuthToken()
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  // Don't set Content-Type - browser will set it with boundary for multipart
-  return headers
 }
 
 export const getProducts = async (filters?: {
@@ -108,9 +80,8 @@ export const getProductsBySeller = async (sellerId: string): Promise<Product[]> 
 
 export const createProduct = async (product: Partial<Product>): Promise<Product> => {
   try {
-    const res = await fetch(`${API_BASE_URL}/products`, {
+    const res = await authFetch(`${API_BASE_URL}/products`, {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: JSON.stringify(product),
     })
     if (!res.ok) {
@@ -129,9 +100,8 @@ export const updateProduct = async (productId: string, product: Partial<Product>
   const url = `${API_BASE_URL}/products/${productId}`
   console.log('[products_service] updateProduct called', { productId, url, method: 'PUT' })
   try {
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'PUT',
-      headers: getAuthHeaders(),
       body: JSON.stringify(product),
     })
     if (!res.ok) {
@@ -146,9 +116,8 @@ export const updateProduct = async (productId: string, product: Partial<Product>
 
 export const deleteProduct = async (productId: string): Promise<void> => {
   try {
-    const res = await fetch(`${API_BASE_URL}/products/${productId}`, {
+    const res = await authFetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
     })
     if (!res.ok) {
       const error = await res.json()
@@ -175,9 +144,8 @@ export const uploadProductImages = async (files: File[]): Promise<string[]> => {
       formData.append('images', file)
     })
 
-    const res = await fetch(`${API_BASE_URL}/products/upload`, {
+    const res = await authFetchForUpload(`${API_BASE_URL}/products/upload`, {
       method: 'POST',
-      headers: getAuthHeadersForUpload(), // No Content-Type header for multipart
       body: formData,
     })
 

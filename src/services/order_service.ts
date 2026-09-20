@@ -1,11 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9001/api/v1'
-
-const getAuthHeaders = (): HeadersInit => {
-  const headers: HeadersInit = { 'Content-Type': 'application/json' }
-  const token = localStorage.getItem('authToken')
-  if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-  return headers
-}
+import { API_BASE_URL } from '../config/api'
+import { authFetch } from '../utils/authFetch'
 
 import type { ShippingAddress, OrderDto } from '../types/order'
 import type { OrderReturnDto } from '../types/return'
@@ -15,9 +9,8 @@ export async function placeOrder(
   shippingAddress: ShippingAddress,
   paymentMethod: string
 ): Promise<OrderDto[]> {
-  const res = await fetch(`${API_BASE_URL}/orders`, {
+  const res = await authFetch(`${API_BASE_URL}/orders`, {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ shippingAddress, paymentMethod }),
   })
   if (!res.ok) {
@@ -30,7 +23,7 @@ export async function placeOrder(
 
 /** Get my orders: buyer sees orders they placed, seller sees orders for them (requires auth). */
 export async function getMyOrders(): Promise<OrderDto[]> {
-  const res = await fetch(`${API_BASE_URL}/orders`, { headers: getAuthHeaders() })
+  const res = await authFetch(`${API_BASE_URL}/orders`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error((err as { error?: string }).error || `Failed to get orders: ${res.statusText}`)
@@ -41,7 +34,7 @@ export async function getMyOrders(): Promise<OrderDto[]> {
 
 /** Get a single order by ID (buyer or seller of that order; requires auth). */
 export async function getOrder(id: string): Promise<OrderDto> {
-  const res = await fetch(`${API_BASE_URL}/orders/${id}`, { headers: getAuthHeaders() })
+  const res = await authFetch(`${API_BASE_URL}/orders/${id}`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error((err as { error?: string }).error || `Failed to get order: ${res.statusText}`)
@@ -50,12 +43,18 @@ export async function getOrder(id: string): Promise<OrderDto> {
   return data.order
 }
 
-/** Update order status (seller: CONFIRMED/SHIPPED/DELIVERED; buyer/seller: CANCELLED when PENDING). */
-export async function updateOrderStatus(orderId: string, status: string): Promise<OrderDto> {
-  const res = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+/** Update order status (seller: CONFIRMED/SHIPPED/DELIVERED; buyer/seller: CANCELLED when PENDING). Optional trackingNumber and carrier when setting CONFIRMED or SHIPPED. */
+export async function updateOrderStatus(
+  orderId: string,
+  status: string,
+  options?: { trackingNumber?: string; carrier?: string }
+): Promise<OrderDto> {
+  const body: { status: string; trackingNumber?: string; carrier?: string } = { status }
+  if (options?.trackingNumber !== undefined) body.trackingNumber = options.trackingNumber
+  if (options?.carrier !== undefined) body.carrier = options.carrier
+  const res = await authFetch(`${API_BASE_URL}/orders/${orderId}/status`, {
     method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -67,9 +66,8 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
 
 /** Request a return for a delivered order (buyer only). */
 export async function requestReturn(orderId: string, reason: string): Promise<OrderReturnDto> {
-  const res = await fetch(`${API_BASE_URL}/orders/${orderId}/return`, {
+  const res = await authFetch(`${API_BASE_URL}/orders/${orderId}/return`, {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ reason }),
   })
   if (!res.ok) {
