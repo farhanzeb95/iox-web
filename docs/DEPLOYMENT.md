@@ -11,6 +11,7 @@ Create a Supabase project and run these files in the SQL Editor, in order:
 3. `iox-service/migrations/003_order_tracking.sql`
 4. `iox-service/migrations/004_seller_status_and_documents.sql`
 5. `iox-service/migrations/005_seller_store_fees.sql`
+6. `iox-service/migrations/006_monthly_seller_store_fees.sql`
 
 Create the `products` and `users` storage buckets. Keep the storage access key and secret private.
 

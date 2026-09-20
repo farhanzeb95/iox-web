@@ -128,7 +128,7 @@ The following are requirements to complete or harden the product; they must not 
 
 **FR-TRUST-05** Buyers shall be able to report a product, seller, review, or message. Administrators shall be able to investigate and resolve reports.
 
-**FR-TRUST-06** A private seller shall pay a one-time PKR 500 store fee and a business seller shall pay a one-time PKR 1,000 store fee before store activation.
+**FR-TRUST-06** A private seller shall pay a monthly PKR 500 store fee and a business seller shall pay a monthly PKR 1,000 store fee to keep the store active.
 
 **FR-TRUST-07** Seller store fees shall be payable by JazzCash, EasyPaisa, Raast, or bank transfer. Each submission shall include a payment reference and remain pending until verified by an administrator.
 

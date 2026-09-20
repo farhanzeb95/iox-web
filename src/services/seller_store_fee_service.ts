@@ -25,3 +25,28 @@ export async function submitSellerStoreFee(
   }
   return (data as { fee: SellerStoreFee }).fee
 }
+
+export async function getSellerStoreFees(): Promise<SellerStoreFee[]> {
+  const response = await authFetch(`${API_BASE_URL}/seller-fees`)
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error((data as { error?: string }).error || 'Failed to load seller fees')
+  }
+  return (data as { fees?: SellerStoreFee[] }).fees ?? []
+}
+
+export async function reviewSellerStoreFee(
+  feeId: string,
+  status: 'PAID' | 'REJECTED',
+  note = '',
+): Promise<SellerStoreFee> {
+  const response = await authFetch(`${API_BASE_URL}/seller-fees/${feeId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, note }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error((data as { error?: string }).error || 'Failed to review seller fee')
+  }
+  return (data as { fee: SellerStoreFee }).fee
+}

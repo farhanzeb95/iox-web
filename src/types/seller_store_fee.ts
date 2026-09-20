@@ -17,6 +17,8 @@ export type SellerStoreFee = {
   reviewNote?: string
   submittedAt: string
   reviewedAt?: string
+  billingPeriodStart: string
+  billingPeriodEnd: string
 }
 
 export type SellerStoreFeeResponse = {

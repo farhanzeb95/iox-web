@@ -71,7 +71,7 @@ onMounted(loadFee)
       <div>
         <h2 id="store-fee-title">Store fee</h2>
         <p class="fee-copy">
-          A one-time {{ formatPricePKR(amount) }} fee is required to activate your seller store.
+          A monthly {{ formatPricePKR(amount) }} fee is required to keep your seller store active.
         </p>
       </div>
       <strong v-if="!loading" class="fee-status">{{ statusLabel }}</strong>

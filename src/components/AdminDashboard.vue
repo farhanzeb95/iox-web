@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import StatCard from './shared/StatCard.vue'
 import { ref, onMounted, computed } from 'vue'
-import { OnyxLoadingIndicator, OnyxTable, OnyxHeadline } from 'sit-onyx'
+import { OnyxButton, OnyxLoadingIndicator, OnyxTable, OnyxHeadline } from 'sit-onyx'
 import { iconUserGroup, iconStore, iconCheck } from '@sit-onyx/icons'
 import { getUsers } from '../services/users_service'
 import type { User } from '../services/users_service'
+import { getSellerStoreFees, reviewSellerStoreFee } from '../services/seller_store_fee_service'
+import type { SellerStoreFee } from '../types/seller_store_fee'
+import { formatPricePKR } from '../utils/format'
 
 const users = ref<User[]>([])
 const loading = ref(true)
+const fees = ref<SellerStoreFee[]>([])
+const feesLoading = ref(true)
+const feeError = ref<string | null>(null)
+const reviewingFeeId = ref<string | null>(null)
 
 const stats = computed(() => {
   const total = users.value.length
@@ -47,7 +54,38 @@ async function loadUsers() {
   }
 }
 
-onMounted(loadUsers)
+async function loadFees() {
+  feesLoading.value = true
+  feeError.value = null
+  try {
+    fees.value = await getSellerStoreFees()
+  } catch (e) {
+    feeError.value = e instanceof Error ? e.message : 'Failed to load seller fees'
+  } finally {
+    feesLoading.value = false
+  }
+}
+
+async function reviewFee(fee: SellerStoreFee, status: 'PAID' | 'REJECTED') {
+  const note = window.prompt(status === 'PAID' ? 'Optional approval note' : 'Reason for rejection')
+  if (note === null) return
+  reviewingFeeId.value = fee.id
+  feeError.value = null
+  try {
+    const updated = await reviewSellerStoreFee(fee.id, status, note)
+    const index = fees.value.findIndex((item) => item.id === updated.id)
+    if (index >= 0) fees.value[index] = updated
+  } catch (e) {
+    feeError.value = e instanceof Error ? e.message : 'Failed to review seller fee'
+  } finally {
+    reviewingFeeId.value = null
+  }
+}
+
+onMounted(() => {
+  loadUsers()
+  loadFees()
+})
 </script>
 
 <template>
@@ -87,6 +125,59 @@ onMounted(loadUsers)
         </template>
       </OnyxTable>
     </div>
+
+    <div class="table-section fee-section">
+      <OnyxTable>
+        <template #headline>
+          <OnyxHeadline is="h2">Seller store fee submissions</OnyxHeadline>
+        </template>
+        <template #head>
+          <tr>
+            <th>Seller ID</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Billing month</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </template>
+        <template #default>
+          <tr v-if="feesLoading">
+            <td colspan="7"><OnyxLoadingIndicator /></td>
+          </tr>
+          <tr v-else-if="fees.length === 0">
+            <td colspan="7" class="empty-cell">No seller fee submissions.</td>
+          </tr>
+          <tr v-for="fee in fees" v-else :key="fee.id">
+            <td>{{ fee.sellerId.slice(-8) }}</td>
+            <td>{{ formatPricePKR(fee.amount) }}</td>
+            <td>{{ fee.paymentMethod }}</td>
+            <td>{{ fee.paymentReference }}</td>
+            <td>{{ fee.billingPeriodStart }}</td>
+            <td>{{ fee.status }}</td>
+            <td class="actions">
+              <template v-if="fee.status === 'PENDING'">
+                <OnyxButton
+                  label="Approve"
+                  density="compact"
+                  :disabled="reviewingFeeId === fee.id"
+                  @click="reviewFee(fee, 'PAID')"
+                />
+                <OnyxButton
+                  label="Reject"
+                  density="compact"
+                  :disabled="reviewingFeeId === fee.id"
+                  @click="reviewFee(fee, 'REJECTED')"
+                />
+              </template>
+              <span v-else>{{ fee.reviewNote || 'Reviewed' }}</span>
+            </td>
+          </tr>
+        </template>
+      </OnyxTable>
+      <p v-if="feeError" class="error">{{ feeError }}</p>
+    </div>
   </div>
 </template>
 
@@ -120,6 +211,25 @@ onMounted(loadUsers)
 
 .table-section {
   width: 100%;
+}
+
+.fee-section {
+  overflow-x: auto;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.empty-cell {
+  padding: 16px;
+  color: var(--onyx-color-base-text-secondary);
+}
+
+.error {
+  color: var(--onyx-color-base-text-danger);
 }
 
 .empty-state {
