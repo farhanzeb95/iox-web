@@ -43,7 +43,7 @@ const { toasts, dismiss } = useToast()
   border-left: 4px solid var(--toast-accent);
   border-radius: 10px;
   background: var(--app-surface-raised);
-  box-shadow: 0 14px 34px rgba(20, 32, 42, 0.16);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--app-ink) 18%, transparent);
 }
 
 .toast--success { --toast-accent: #20845a; }
