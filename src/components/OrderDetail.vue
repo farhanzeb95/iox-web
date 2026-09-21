@@ -200,8 +200,8 @@
         <div v-if="canRequestReturn" class="actions return-section">
           <h2 class="section-title">Request return</h2>
           <p v-if="returnError" class="status-error">{{ returnError }}</p>
-          <OnyxInput v-model="returnReason" label="Reason (optional)" placeholder="e.g. Defective item" class="return-reason" />
-          <OnyxButton label="Submit return request" density="compact" :disabled="returnSubmitting" @click="submitReturn" />
+          <OnyxInput v-model="returnReason" label="Reason" placeholder="e.g. Defective item" class="return-reason" required />
+          <OnyxButton label="Submit return request" density="compact" :disabled="returnSubmitting || !returnReason.trim()" @click="submitReturn" />
         </div>
         <p v-else-if="returnRequested" class="return-requested">Return requested for this order.</p>
 

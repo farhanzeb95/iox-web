@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import {
   OnyxHeadline,
   OnyxCard,
@@ -15,6 +15,11 @@ const loading = ref(true)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const success = ref(false)
+const canSave = computed(() => Boolean(
+  form.value.FirstName.trim() && form.value.LastName.trim() && form.value.Contact.trim() &&
+  form.value.Address.City.trim() && form.value.Address.State.trim() &&
+  form.value.Address.Zip.trim() && form.value.Address.Country.trim() && !saving.value
+))
 
 const form = ref({
   FirstName: '',
@@ -121,7 +126,7 @@ onMounted(load)
           <OnyxInput v-model="form.Address.Country" label="Country" placeholder="Country" />
         </div>
 
-        <OnyxButton type="submit" label="Save changes" :disabled="saving" />
+        <OnyxButton type="submit" label="Save changes" :disabled="!canSave" />
       </form>
     </OnyxCard>
   </div>

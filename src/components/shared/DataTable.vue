@@ -24,7 +24,7 @@
   .data-table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
+    background: var(--app-surface-raised, var(--onyx-color-base-background));
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 4px 10px rgba(0,0,0,0.05);

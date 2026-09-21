@@ -58,11 +58,13 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background: var(--app-surface);
   }
 
   .main-content {
     flex: 1;
     width: 100%;
+    background: transparent;
   }
   </style>
   

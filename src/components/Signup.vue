@@ -46,6 +46,12 @@ const businessRegFile = ref<File | null>(null)
 
 const isPrivateSeller = computed(() => form.type === UserTypes.PrivateSeller)
 const isBusinessSeller = computed(() => form.type === UserTypes.BusinessSeller)
+const canSubmit = computed(() => {
+  const base = form.firstName.trim() && form.lastName.trim() && form.email.trim() && form.type && form.password.length >= 6
+  const privateDocs = !isPrivateSeller.value || (!!idCardFrontFile.value && !!idCardBackFile.value)
+  const businessDocs = !isBusinessSeller.value || !!businessRegFile.value
+  return !!base && privateDocs && businessDocs && !isLoading.value
+})
 
 const userTypeOptions = [
   { value: '', label: 'Select user type' },
@@ -239,7 +245,7 @@ async function onSignupClick() {
             required
           />
 
-          <OnyxButton type="submit" label="Sign up" :disabled="isLoading" />
+          <OnyxButton type="submit" label="Sign up" :disabled="!canSubmit" />
 
           <div class="links">
             <OnyxLink href="#" @click.prevent="goToLogin">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import { loginUser } from '../services/users_service';
 import { useRouter } from 'vue-router';
 import { OnyxButton, OnyxInput, OnyxCard, OnyxHeadline, OnyxLink } from 'sit-onyx';
@@ -23,6 +23,7 @@ const loginForm = reactive<LoginForm>({
   password: ''
 })
 const loginError = ref('')
+const canSubmit = computed(() => loginForm.email.trim().length > 0 && loginForm.password.length > 0)
 
 const handleForgotPassword = () => {
   toast.info('Password recovery', 'Forgot password is not available yet. Please contact support.')
@@ -70,7 +71,7 @@ const onLoginClick = async () => {
             <OnyxLink href="#" @click.prevent="handleForgotPassword">Forgot Password?</OnyxLink>
             <OnyxLink href="#" @click.prevent="handleSignupClick">Not a member yet? Sign up</OnyxLink>
           </div>
-          <OnyxButton type="submit" label="Login" />
+          <OnyxButton type="submit" label="Login" :disabled="!canSubmit" />
         </form>
       </OnyxCard>
     </div>

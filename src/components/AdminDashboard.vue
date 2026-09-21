@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import StatCard from './shared/StatCard.vue'
 import { ref, onMounted, computed } from 'vue'
-import { OnyxButton, OnyxLoadingIndicator, OnyxTable, OnyxHeadline } from 'sit-onyx'
+import { OnyxButton, OnyxLoadingIndicator, OnyxTable, OnyxHeadline, OnyxTag } from 'sit-onyx'
 import { iconUserGroup, iconStore, iconCheck } from '@sit-onyx/icons'
 import { getUsers, updateSellerStatus } from '../services/users_service'
 import type { User } from '../services/users_service'
@@ -10,6 +10,7 @@ import type { SellerStoreFee } from '../types/seller_store_fee'
 import { formatPricePKR } from '../utils/format'
 import { useToast } from '../composables/useToast'
 import AppDialog from './shared/AppDialog.vue'
+import AdminUserDetailSidebar from './sidebars/AdminUserDetailSidebar.vue'
 
 const users = ref<User[]>([])
 const loading = ref(true)
@@ -21,6 +22,9 @@ const toast = useToast()
 const dialogOpen = ref(false)
 const dialogFee = ref<SellerStoreFee | null>(null)
 const dialogStatus = ref<'PAID' | 'REJECTED'>('PAID')
+const selectedUser = ref<User | null>(null)
+const userSidebarOpen = ref(false)
+const userStatusBusy = ref(false)
 
 const stats = computed(() => {
   const total = users.value.length
@@ -72,18 +76,20 @@ async function loadFees() {
   }
 }
 
-async function setSellerStatus(user: User, status: 'ACTIVE' | 'REJECTED') {
-  if (!user.id) return
-  const result = await updateSellerStatus(user.id, status)
+async function setUserStatus(status: 'ACTIVE' | 'REJECTED' | 'SUSPENDED') {
+  if (!selectedUser.value?.id) return
+  userStatusBusy.value = true
+  const result = await updateSellerStatus(selectedUser.value.id, status)
+  userStatusBusy.value = false
   if (result.error) {
-    feeError.value = result.error
+    toast.error('Status update failed', result.error)
     return
   }
-  const updatedUser = result.data
-  if (updatedUser) {
-    const index = users.value.findIndex((item) => item.id === updatedUser.id)
-    if (index >= 0) users.value[index] = updatedUser
-    toast.success('Seller status updated', `Seller is now ${status.toLowerCase()}.`)
+  if (result.data) {
+    selectedUser.value = result.data
+    const index = users.value.findIndex((item) => item.id === result.data?.id)
+    if (index >= 0) users.value[index] = result.data
+    toast.success('User status updated', `Account is now ${status.toLowerCase()}.`)
   }
 }
 
@@ -146,23 +152,14 @@ onMounted(() => {
             <th>Email</th>
             <th>Role</th>
             <th>Status</th>
-            <th>Actions</th>
           </tr>
         </template>
         <template #default>
-          <tr v-for="(u, index) in users" :key="u.id || index">
+          <tr v-for="(u, index) in users" :key="u.id || index" class="user-row" tabindex="0" @click="selectedUser = u; userSidebarOpen = true" @keydown.enter="selectedUser = u; userSidebarOpen = true">
             <td>{{ fullName(u) }}</td>
             <td>{{ u.Email || '–' }}</td>
-            <td>{{ roleLabel(u.Type) }}</td>
-            <td>{{ u.status || '–' }}</td>
-            <td class="actions">
-              <template v-if="(u.Type === 'PRIVATE_SELLER' || u.Type === 'BUSINESS_SELLER') && u.status !== 'ACTIVE'">
-                <OnyxButton label="Approve seller" density="compact" @click="setSellerStatus(u, 'ACTIVE')" />
-              </template>
-              <template v-if="(u.Type === 'PRIVATE_SELLER' || u.Type === 'BUSINESS_SELLER') && u.status !== 'REJECTED'">
-                <OnyxButton label="Reject" density="compact" @click="setSellerStatus(u, 'REJECTED')" />
-              </template>
-            </td>
+            <td><OnyxTag color="primary" :label="roleLabel(u.Type)" /></td>
+            <td><OnyxTag :color="u.status === 'ACTIVE' ? 'success' : u.status === 'SUSPENDED' || u.status === 'REJECTED' ? 'danger' : 'warning'" :label="u.status || 'UNKNOWN'" /></td>
           </tr>
         </template>
       </OnyxTable>
@@ -232,6 +229,13 @@ onMounted(() => {
     @confirm="submitFeeReview"
     @cancel="dialogOpen = false"
   />
+  <AdminUserDetailSidebar
+    :open="userSidebarOpen"
+    :user="selectedUser"
+    :busy="userStatusBusy"
+    @set-status="setUserStatus"
+    @close="userSidebarOpen = false"
+  />
 </template>
 
 <style scoped>
@@ -275,6 +279,9 @@ onMounted(() => {
   gap: 8px;
   align-items: center;
 }
+
+.user-row { cursor: pointer; }
+.user-row:hover { background: var(--onyx-color-base-background-hover); }
 
 .empty-cell {
   padding: 16px;

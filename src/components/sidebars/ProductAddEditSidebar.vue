@@ -58,6 +58,11 @@
   // Loading state
   const isSubmitting = ref(false)
   const errorMessage = ref('')
+  const canSubmit = computed(() => Boolean(
+    title.value.trim() && description.value.trim() && price.value && price.value > 0 &&
+    quantity.value >= 0 && condition.value &&
+    (uploadedImageUrls.value.length > 0 || selectedFiles.value.length > 0) && !isSubmitting.value
+  ))
   
   // Persist product id for submit (API returns "id"; backend may also use "_id" or $oid)
   const editingProductId = ref<string | null>(null)
@@ -409,7 +414,7 @@
           label="Cancel"
           color="neutral"
           @click="localIsOpen = false"
-          :disabled="isSubmitting"
+          :disabled="!canSubmit"
         />
         <OnyxButton
           :label="mode === 'add' ? 'Create Product' : 'Update Product'"

@@ -14,7 +14,7 @@ export interface User {
   Password?: string
   Type: UserType
   Contact: string
-  /** ACTIVE, IN_REVIEW, REJECTED - seller account status */
+  /** ACTIVE, IN_REVIEW, REJECTED, SUSPENDED - account status */
   status?: string
   businessRegistrationUrl?: string
   idCardFrontUrl?: string
@@ -27,6 +27,8 @@ export interface User {
     Zip: string
     Country: string
   }
+  createdAt?: string
+  updatedAt?: string
 }
 
 // Signup form data interface (frontend form structure)
@@ -193,7 +195,7 @@ export async function getUsers(): Promise<User[]> {
 
 export async function updateSellerStatus(
   id: string,
-  status: 'ACTIVE' | 'REJECTED' | 'IN_REVIEW',
+  status: 'ACTIVE' | 'REJECTED' | 'IN_REVIEW' | 'SUSPENDED',
 ): Promise<ApiResponse<User>> {
   const response = await authFetch(`${API_BASE_URL}/users/${id}/status`, {
     method: 'PATCH',

@@ -20,7 +20,9 @@ const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 const toast = useToast()
 
-const canSubmit = computed(() => fee.value?.status !== 'PAID' && !submitting.value)
+const canSubmit = computed(() => Boolean(
+  fee.value?.status !== 'PAID' && paymentMethod.value && paymentReference.value.trim() && !submitting.value
+))
 const statusLabel = computed(() => {
   if (!fee.value) return 'Not submitted'
   if (fee.value.status === 'PAID') return 'Verified'

@@ -47,6 +47,10 @@
     items.value.reduce((s, i) => s + (i.price ?? 0) * i.quantity, 0)
   )
   const isEmpty = computed(() => items.value.length === 0)
+  const canPlaceOrder = computed(() => Boolean(
+    !isEmpty.value && address.value.City?.trim() && address.value.State?.trim() &&
+    address.value.Zip?.trim() && address.value.Country?.trim() && !placing.value
+  ))
 
   async function onPlaceOrder() {
     if (isEmpty.value) return
@@ -156,7 +160,7 @@
           <OnyxButton
             class="place-order-btn"
             label="Place order"
-            :disabled="placing"
+            :disabled="!canPlaceOrder"
             @click="onPlaceOrder"
           />
           <p v-if="placing" class="placing">Placing order…</p>

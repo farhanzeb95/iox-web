@@ -15,6 +15,27 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html[data-theme="light"] {
+  --app-text: #1d2b35;
+  --app-text-muted: #63737d;
+  --app-surface: #f4f7f5;
+  --app-surface-raised: #ffffff;
+  --app-border: #dbe4df;
+  --app-accent: #1e7556;
+  --app-accent-soft: #e1f0e9;
+}
+
+html[data-theme="dark"] {
+  --app-ink: #e8f0f2;
+  --app-text: #e8f0f2;
+  --app-text-muted: #a5b6bc;
+  --app-surface: #121a1f;
+  --app-surface-raised: #1c282e;
+  --app-border: #35464e;
+  --app-accent: #76c6a2;
+  --app-accent-soft: #213b34;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -26,11 +47,25 @@ body {
 }
 
 [data-theme="dark"] body {
+  background-color: var(--app-surface);
   background-image: linear-gradient(135deg, color-mix(in srgb, var(--app-accent-soft) 22%, transparent), transparent 42%), linear-gradient(315deg, color-mix(in srgb, var(--app-surface-raised) 18%, transparent), transparent 38%);
 }
 
-button, input, textarea, select { font: inherit; }
-button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgba(30, 117, 86, 0.35); outline-offset: 2px; }
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(30, 117, 86, 0.35);
+  outline-offset: 2px;
+}
 
 /* Theme toggle button only - Onyx handles all other buttons */
 .theme-toggle {
